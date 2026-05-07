@@ -58,3 +58,84 @@ JOIN menu m
 GROUP BY m.product_name
 ORDER BY times_purchased DESC
 LIMIT 1;
+
+--Q5: Which item was the most popular for each customer?
+
+with cte as (
+    select 
+        s.customer_id,
+        m.product_name,
+        count(*) as order_count,
+        rank() over(
+            partition by s.customer_id
+            order by count(*) desc
+        ) as rnk
+    from sales s
+    join menu m
+    on s.product_id = m.product_id
+    group by s.customer_id, m.product_name
+)
+
+select 
+    customer_id,
+    product_name,
+    order_count
+from cte
+where rnk = 1;
+
+--Q6):Which item was purchased first by the customer after they became a member?
+
+select * from 
+(
+    select 
+        s.customer_id,
+        m.product_name,
+        mm.join_date,
+        s.order_date,
+        rank() over(
+            partition by s.customer_id 
+            order by s.order_date
+        ) as rnk
+    from sales s
+    join menu m
+    on s.product_id = m.product_id
+    join members mm 
+    on s.customer_id = mm.customer_id
+    where s.order_date >= mm.join_date
+)t
+where rnk = 1;
+
+--Q7): Which item was purchased just before the customer became a member?
+
+select customer_id,product_name from(
+select s.customer_id,m.product_name,s.order_date,mm.join_date,
+rank() over(partition by s.customer_id order by s.order_date desc) as rnk
+from sales s
+join menu m
+on s.product_id = m.product_id
+join members mm 
+on s.customer_id = mm.customer_id
+where s.order_date < mm.join_date
+)t
+where rnk = 1
+
+--Q8)What is the total items and amount spent for each member before they became a member?
+
+select s.customer_id,count(*) as total_items,
+sum(m.price) as amount_spent
+from sales s
+join menu m
+on s.product_id = m.product_id
+join members mm 
+on s.customer_id = mm.customer_id
+where s.order_date < mm.join_date
+group by s.customer_id
+
+--Q9):If each $1 spent equates to 10 points and sushi has a 2x points multiplier 
+-- -how many points would each customer have?
+
+
+
+--Q10):In the first week after a customer joins the program (including their join date) 
+--they earn 2x points on all items, not just sushi - how many points do customer A and B have at the end of January?
+
